@@ -131,3 +131,48 @@
         printf( __("Files will be generated from source file: <pre>%s</pre> ", 'pwa-generator'), $this->sw_source );
     ?> </p>
 </div>
+
+
+
+<h2><?php _e('assetlinks.json', 'pwa-generator'); ?></h2>
+<div style='border:1px solid gray; padding: 10px;'>
+    <p><?php 
+    echo "<a href='" . $this->assetlinks_url . "' target='_blank'><pre>" . $this->assetlinks_path . '</pre></a>';
+    ?></p>
+
+    <?php
+        if (!empty($_GET['assetlinks']) && $_GET['assetlinks'] === 'generated' ) {
+            echo '<p class="success" style="color:green">' . __('Good, the assetlinks file has been generated', 'pwa-generator') . '</p>';
+        } ?>
+    <form action='<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>' method="post">
+        <input name="action" type="hidden" value="generate_assetlinks_form_submit" />
+        <?php wp_nonce_field( 'action_generate_assetlinks', 'nonce_field' ); ?>
+        
+        <?php
+        if (file_exists( $this->assetlinks_path )) {
+            echo '<p style="color:darkgreen;">'.__('File exists!', 'pwa-generator').' 😀 </p>';
+            echo '<p>'.__('Make sure it has the right permissions with', 'pwa-generator').'</p>';
+        } else {
+            echo '<p style="color:red;">'.__('File doesnt exists 💩 Create IT', 'pwa-generator').'</p>';
+            echo "<pre>mkdir .well-known</pre>";
+            echo "<pre>touch ".$this->assetlinks_path."</pre>";
+        }
+        if (is_writable( $this->assetlinks_path )) {
+            echo '<p style="color:darkgreen;">'.__('Writable', 'pwa-generator').' 😀 </p>';
+        } else {
+            echo '<p style="color:red;">'.__('Not writable though 💩 ', 'pwa-generator').'</p>';
+            echo '<p>'.__('Make sure it has the right permissions with', 'pwa-generator').'</p>';
+            echo "<pre>chmod 666 ".$this->assetlinks_path."</pre>";
+        }
+        ?>
+
+
+
+        
+        <input type="submit" name="submit" id="submit" class="button button-primary" value="<?php esc_attr_e( 'Generate Service worker file', 'pwa-generator'); ?>">
+                
+    </form>
+    <p> <?php 
+        printf( __("Files will be generated from source file: <pre>%s</pre> ", 'pwa-generator'), $this->assetlinks_source );
+    ?> </p>
+</div>

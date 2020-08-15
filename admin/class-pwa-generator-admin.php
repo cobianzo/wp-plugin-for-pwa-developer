@@ -35,6 +35,11 @@ class Pwa_Generator_Admin {
 	private $sw_file;
 	private $sw_source;
 
+	private $assetlinks_file;
+	private $assetlinks_source_relpath;
+	private $assetlinks_source;
+	private $assetlinks_url;
+		
 
 	public function __construct( $plugin_name, $version ) {
 
@@ -53,13 +58,19 @@ class Pwa_Generator_Admin {
 		$this->sw_source_relpath = 'src/js/service-worker/sw-template-to-js.php';
 		$this->sw_source = get_stylesheet_directory() . '/' . $this->sw_source_relpath;
 		
+		$this->assetlinks_file = '.well-known/assetlinks.json';;
+		$this->assetlinks_source_relpath = 'src/assetlinks-template-to-json.php';
+		$this->assetlinks_source = get_stylesheet_directory() . '/' . $this->sw_source_relpath;
+		
 		$this->manifest_it_path = ABSPATH . $this->manifest_it_file;
 		$this->manifest_en_path = ABSPATH . $this->manifest_en_file;
 		$this->sw_path = ABSPATH . $this->sw_file;
+		$this->assetlinks_path  = ABSPATH . $this->assetlinks_file;
 		
 		$this->manifest_it_url = get_site_url() . '/' . $this->manifest_it_file;
 		$this->manifest_en_url = get_site_url() . '/' . $this->manifest_en_file;
 		$this->sw_url = get_site_url() . '/' . $this->sw_file;		
+		$this->assetlinks_url = get_site_url() . '/' . $this->assetlinks_file;
 
 	}
 
@@ -76,6 +87,7 @@ class Pwa_Generator_Admin {
 		// now let's use the loader, ok?
 		$this->loader->add_action( 'admin_post_generate_manifests_form_submit', $this, 'process_manifest_generator');
 		$this->loader->add_action( 'admin_post_generate_sw_form_submit', $this, 'process_sw_generator');
+		$this->loader->add_action( 'admin_post_generate_assetlinks_form_submit', $this, 'process_assetlinks_generator');
 
 		$this->loader->run();
 	}
@@ -227,6 +239,70 @@ class Pwa_Generator_Admin {
 		wp_redirect( add_query_arg( 'sw', 'generated', $request['_wp_http_referer'] )  , 301);
 
 	}
+
+
+	// When we submit the form for service worker, in ..display.php
+	public function process_assetlinks_generator() {
+		$request = $_POST;
+		if ( ! isset( $request['action'] ) || $request['action'] !== 'generate_assetlinks_form_submit' ) {
+			return;
+		}
+		if ( ! isset( $request['nonce_field'] ) 
+			|| ! wp_verify_nonce( $request['nonce_field'], 'action_generate_assetlinks' ) ) {
+			print 'Sorry, your nonce did not verify.';
+			exit;
+		}
+		if( ! current_user_can('editor') && !current_user_can('administrator') ) {
+			print 'Sorry, your dont have capabilities.';
+			exit;
+		} 
+
+		$template_part =  substr( $this->assetlinks_source_relpath, 0, strrpos($this->assetlinks_source_relpath, '.') ); 
+		ob_start();
+			get_template_part( $template_part );
+		$json_code = ob_get_clean();
+
+		
+		$filepathname = $this->assetlinks_path;
+		if (file_exists( $filepathname )) 
+		{
+			// write file
+			try {
+				$f = @fopen("$filepathname", 'w');
+				if (!$f) {
+					throw new Exception ('Permissions problem: '.$filepathname. ' '.  getcwd()); 
+				}
+				$fwrite = fwrite($f, ( $json_code ));
+				if ($fwrite === false) {
+					die(' permissions? ');
+				}
+				fclose($f);
+			} catch (\Throwable $th) {
+				echo "Errors accessing assetlinks file: ";
+				echo "<h4>$this->assetlinks_file</h4>";
+				echo "<p>$filepathname</p>";
+				echo "<p>Looks like a permissions problem</p>";
+				echo "<a href=".add_query_arg( 'assetlinkserror', 'filepermissions', $request['_wp_http_referer'] ).">redirect</a>";
+				die();
+			}	
+		} 
+		else 
+		{
+			echo "assetlinks file doesnt exist. Please make sure you create the file: ";
+			echo "<h4>$this->assetlinks_file</h4>";
+			echo "<p>$filepathname</p>";
+			echo "<a href=".add_query_arg( 'assetlinkserror', 'filedoesntexist', $request['_wp_http_referer'] ).">redirect</a>";
+			die();
+		}
+
+
+
+
+		// redirect the user to the appropriate page
+		wp_redirect( add_query_arg( 'assetlinks', 'generated', $request['_wp_http_referer'] )  , 301);
+
+	}
+
 
 
 
